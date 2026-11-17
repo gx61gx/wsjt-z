@@ -99,6 +99,7 @@ class ColorHighlighting;
 class MessageClient;
 class QTime;
 class WSPRBandHopping;
+class AutoBandHop;
 
 // Z
 class UnfilteredView;
@@ -470,6 +471,9 @@ private slots:
      void on_txFirstCheckBox_toggled();
     void update_tx5(const QString &qsy_text);
     void reply_tx5(const QString &qsy_reply);
+    // Auto Band Hop: propagation-model hopper, mutually exclusive with the
+    // scheduled "Band hopping" group above.
+    void onAutoBandHop (double freqMHz, QString reason);
 
 private:
   Q_SIGNAL void initializeAudioOutputStream (QAudioDeviceInfo,
@@ -570,6 +574,7 @@ private:
   LogBook m_logBook;            // must be after Configuration construction
   Cloudlog m_cloudlog;
   WSPRBandHopping m_WSPR_band_hopping;
+  AutoBandHop * m_autoBandHop {nullptr};
   bool m_WSPR_tx_next;
   MessageBox m_rigErrorMessageBox;
   QScopedPointer<SampleDownloader> m_sampleDownloader;

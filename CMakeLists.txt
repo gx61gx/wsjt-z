@@ -299,6 +299,8 @@ set (wsjtx_CXXSRCS
   widgets/messageaveraging.cpp
   widgets/activeStations.cpp
   widgets/DXStationMap.cpp
+  widgets/AutoBandHop.cpp
+  widgets/PrefixFilter.cpp
   widgets/QSYMessage.cpp
   widgets/QSYMessageCreator.cpp
   widgets/qsymonitor.cpp
@@ -922,16 +924,22 @@ if (WIN32)
   if (DUMPCPP-NOTFOUND)
     message (FATAL_ERROR "dumpcpp tool not found")
   endif (DUMPCPP-NOTFOUND)
-  execute_process (
-    COMMAND ${DUMPCPP} -getfile {4FE359C5-A58F-459D-BE95-CA559FB4F270}
-    OUTPUT_VARIABLE AXSERVER
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-  string (STRIP "${AXSERVER}" AXSERVER)
-  if (NOT AXSERVER)
-    message (FATAL_ERROR "You need to install OmniRig on this computer")
-  endif (NOT AXSERVER)
-  string (REPLACE "\"" "" AXSERVER ${AXSERVER})
+  # A type library file can be given directly (CI does this: the registry
+  # lookup below is unreliable under WOW64 and needs OmniRig installed).
+  if (OMNIRIG_TLB_PATH)
+    set (AXSERVER "${OMNIRIG_TLB_PATH}")
+  else ()
+    execute_process (
+      COMMAND ${DUMPCPP} -getfile {4FE359C5-A58F-459D-BE95-CA559FB4F270}
+      OUTPUT_VARIABLE AXSERVER
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+    string (STRIP "${AXSERVER}" AXSERVER)
+    if (NOT AXSERVER)
+      message (FATAL_ERROR "You need to install OmniRig on this computer, or pass -DOMNIRIG_TLB_PATH=<file>")
+    endif (NOT AXSERVER)
+    string (REPLACE "\"" "" AXSERVER ${AXSERVER})
+  endif ()
   file (TO_CMAKE_PATH ${AXSERVER} AXSERVERSRCS)
 endif ()
 
@@ -1239,6 +1247,7 @@ if (WSJT_GENERATE_DOCS)
   add_subdirectory (doc)
 endif (WSJT_GENERATE_DOCS)
 if (EXISTS ${CMAKE_SOURCE_DIR}/tests AND IS_DIRECTORY ${CMAKE_SOURCE_DIR}/tests)
+  enable_testing ()
   add_subdirectory (tests)
 endif ()
 

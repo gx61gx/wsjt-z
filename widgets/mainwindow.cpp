@@ -60,6 +60,8 @@
 #include "unfilteredview.h"
 #include "pskreporterwidget.h"
 #include "DXStationMap.h"
+#include "AutoBandHop.hpp"
+#include "PrefixFilter.hpp"
 
 #include "helper_functions.h"
 #include "revision_utils.hpp"
@@ -1144,12 +1146,37 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
   readSettings();            //Restore user's setup parameters
   updateBandActivityTitleLabel();
   update_mode_switch_status_label ();
-  connect (ui->cb_bandHopper, &QGroupBox::toggled, this, [this] (bool) {
+  connect (ui->cb_bandHopper, &QGroupBox::toggled, this, [this] (bool on) {
+      // Only one hopper may drive the radio: enabling the schedule turns the
+      // propagation-model hopper off, and vice versa below.
+      if (on && ui->gb_autoHop->isChecked ()) ui->gb_autoHop->setChecked (false);
       update_mode_switch_status_label ();
     });
   connect (ui->pte_bandHopper, &QPlainTextEdit::textChanged, this, [this] {
       update_mode_switch_status_label ();
     });
+  // Z: Auto Band Hop, a propagation-model hopper that coexists with - but
+  // never runs alongside - the schedule-based "Band hopping" group above.
+  m_autoBandHop = new AutoBandHop {this};
+  m_autoBandHop->setIntervalMinutes (ui->sb_autoHopInterval->value ());
+  connect (ui->gb_autoHop, &QGroupBox::toggled, this, [this] (bool on) {
+      if (on && ui->cb_bandHopper->isChecked ()) ui->cb_bandHopper->setChecked (false);
+      m_autoBandHop->setEnabled (on);
+      update_mode_switch_status_label ();
+    });
+  connect (ui->sb_autoHopInterval, QOverload<int>::of (&QSpinBox::valueChanged), this, [this] (int value) {
+      m_autoBandHop->setIntervalMinutes (value);
+    });
+  connect (m_autoBandHop, &AutoBandHop::hopRequested, this, &MainWindow::onAutoBandHop);
+  if (ui->gb_autoHop->isChecked ())
+    {
+      // Restore the saved state, but let the event loop start first:
+      // switchBand() touches widgets and state that are still being
+      // constructed at this point.
+      QTimer::singleShot (1500, this, [this] {
+          if (ui->gb_autoHop->isChecked ()) m_autoBandHop->setEnabled (true);
+        });
+    }
   connect (ui->bandComboBox, &QComboBox::currentTextChanged, this, [this] {
       update_mode_switch_status_label ();
     });
@@ -1763,6 +1790,8 @@ void MainWindow::writeSettings()
 
   m_settings->setValue ("bandHopperEnabled", ui->cb_bandHopper->isChecked());
   m_settings->setValue ("bandHopper", ui->pte_bandHopper->toPlainText());
+  m_settings->setValue ("autoBandHopEnabled", ui->gb_autoHop->isChecked());
+  m_settings->setValue ("autoBandHopInterval", ui->sb_autoHopInterval->value());
   m_settings->setValue ("AutoCallPreferPSKSpotted", ui->cb_autoCallPreferPSKSpotted->isChecked());
 
   m_settings->setValue ("AutoCallPriority", ui->cb_autoCallPriority->currentIndex());
@@ -2008,6 +2037,11 @@ void MainWindow::readSettings()
   ui->cb_bandHopper->setChecked(m_settings->value("bandHopperEnabled", false).toBool());
   ui->pb_BandChangeNow->setVisible(ui->cb_bandHopper->isChecked());
   ui->pte_bandHopper->setPlainText(m_settings->value("bandHopper", "").toString());
+  // The two hoppers are mutually exclusive even if a hand-edited settings
+  // file claims otherwise; the schedule-based one wins.
+  ui->gb_autoHop->setChecked(m_settings->value("autoBandHopEnabled", false).toBool()
+                             && !ui->cb_bandHopper->isChecked());
+  ui->sb_autoHopInterval->setValue(m_settings->value("autoBandHopInterval", 5).toInt());
   ui->cb_autoCallPreferPSKSpotted->setChecked(m_settings->value("AutoCallPreferPSKSpotted", false).toBool());
   ui->cb_autoCallPriority->setCurrentIndex(m_settings->value ("AutoCallPriority", 0).toInt ());
   m_infoMessageShown = m_settings->value("infoMessageShown12-2024", false).toBool();
@@ -14528,33 +14562,25 @@ bool MainWindow::callsignFiltered(DecodedText dt)
                 filterPrefixes = filterLine.split(",");
 
             if (filterPrefixes.size()>0) {
+                // Entry forms: SP (literal), +poland (DXCC entity), /regex/
+                auto const entry_matches = [&] (QString const& entry) {
+                    return PrefixFilter::entry_matches (entry, dxCall, looked_up.entity_name);
+                };
                 // Exclude
                 if (ui->cb_prefixFilter->currentIndex() == 2)
                     for ( const auto& i : filterPrefixes  )
                     {
-                            if (i.trimmed().startsWith("+")) {
-                                    if(looked_up.entity_name.toUpper().indexOf(i.trimmed().toUpper().remove(0,1)) >= 0) return true;
-                            } else {
-                                    if (dxCall.startsWith(i.trimmed())) return true;
-                            }
+                            if (entry_matches (i)) return true;
                     }
                 // Include
                 if (ui->cb_prefixFilter->currentIndex() == 1) {
                     bool filtered = true;
                     for ( const auto& i : filterPrefixes  )
                     {
-                            if (i.trimmed().startsWith("+")) {
-                                    if(looked_up.entity_name.toUpper().indexOf(i.trimmed().toUpper().remove(0,1)) >= 0)
-                                        {
-                                            filtered = false;
-                                            break;
-                                        }
-                            } else {
-                                    if (dxCall.startsWith(i.trimmed()))
-                                    {
-                                        filtered = false;
-                                        break;
-                                    }
+                            if (entry_matches (i))
+                            {
+                                filtered = false;
+                                break;
                             }
                     }
 
@@ -15550,7 +15576,35 @@ void MainWindow::update_auto_mode_switch_widget()
   ui->pb_ModeChangeNow->setVisible(ui->cb_autoModeSwitch->isChecked());
 }
 
+// Z: Auto Band Hop - propagation-model band selection, mutually exclusive with
+// the schedule-based hopper in toggleBands().
+void MainWindow::onAutoBandHop (double freqMHz, QString reason)
+{
+    // Never interrupt a transmission or an operator-driven QSO.
+    if (m_transmitting) return;
+    if (!ui->dxCallEntry->text().trimmed().isEmpty() && ui->autoButton->isChecked()) return;
+
+    Mode mode;
+    if (m_mode == "FT8") mode = Mode::FT8;
+    else if (m_mode == "FT4") mode = Mode::FT4;
+    else if (m_mode == "FT2") mode = Mode::FT2;
+    else return;                // the band table is HF FT8/FT4/FT2 only
+
+    m_config.frequencies()->filter(m_config.region(), mode, false);
+    int const row = m_config.frequencies()->best_working_frequency(
+        static_cast<Frequency> (freqMHz * 1.0e6 + 0.5));
+    if (row < 0) return;
+
+    // switchBand() stops TX, resets the DX/pounce/ignore state and honours
+    // auto-tune, exactly as the scheduled hopper does.
+    switchBand(row);
+    statusBar()->showMessage(reason, 8000);
+    if (m_zdebug) log("AutoBandHop: " + reason);
+}
+
 void MainWindow::toggleBands() {
+  // Auto Band Hop owns band changes while it is enabled.
+  if (ui->gb_autoHop->isChecked ()) return;
   bool auto_role_selected = ui->cbAutoCall->isChecked() || ui->cbAutoCQ->isChecked();
   bool valid_switch_state = !(ui->cbAutoCall->isChecked() && ui->cbAutoCQ->isChecked());
   if (!ui->cb_bandHopper->isChecked() || !auto_role_selected || !valid_switch_state) return;

@@ -64,14 +64,17 @@ foreach (_comp ${_components})
   endif (_comp STREQUAL "single")
 endforeach (_comp ${_components})
 
-# If using threads, we need to link against threaded libraries as well - except on Windows.
-if (NOT WIN32 AND _use_threads)
+# If using threads, link against the threaded libraries.
+# Skipping this on WIN32 assumed a monolithic JTSDK fftw3 DLL, but MSYS2/MinGW
+# packages are modular: fftw3f_threads is a separate import library, and
+# without it fftwf_init_threads/plan_with_nthreads are undefined at link time.
+if (_use_threads)
   set (_thread_libs)
   foreach (_lib ${_libraries})
     list (APPEND _thread_libs ${_lib}_threads)
   endforeach (_lib ${_libraries})
   set (_libraries ${_thread_libs} ${_libraries})
-endif (NOT WIN32 AND _use_threads)
+endif (_use_threads)
 
 # Keep a list of variable names that we need to pass on to
 # find_package_handle_standard_args().

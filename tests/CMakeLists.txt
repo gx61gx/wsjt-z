@@ -43,3 +43,17 @@ add_executable (test_custom_alert_matcher
   )
 target_link_libraries (test_custom_alert_matcher Qt5::Core Qt5::Test)
 add_test (test_custom_alert_matcher test_custom_alert_matcher)
+
+add_executable (test_prefix_filter
+  test_prefix_filter.cpp
+  ../widgets/PrefixFilter.cpp
+  )
+target_link_libraries (test_prefix_filter Qt5::Core Qt5::Test)
+add_test (test_prefix_filter test_prefix_filter)
+
+add_executable (test_auto_band_hop
+  test_auto_band_hop.cpp
+  ../widgets/AutoBandHop.cpp
+  )
+target_link_libraries (test_auto_band_hop Qt5::Core Qt5::Test)
+add_test (test_auto_band_hop test_auto_band_hop)

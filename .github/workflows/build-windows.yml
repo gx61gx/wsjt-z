@@ -1,0 +1,194 @@
+﻿name: Build Windows x86_64
+
+# Windows build of this fork.  The recipe follows 2E0LXY/wsjt-y's working
+# Windows CI, adapted where the MSYS2 package set moved on:
+#   * UCRT64, not MINGW64: the mingw64 Qt5 modules this build needs
+#     (qt5-multimedia, qt5-websockets, qt5-tools, qt5-activeqt) are no longer
+#     in that repository's database, while UCRT64 still has them all;
+#   * the compiler is pinned to 14.2.0-3: GCC 15/16 break the .tls_common
+#     relocation, and Hamlib's Windows fallbacks (getaddrinfo/socklen_t)
+#     collide with the current mingw-w64 headers;
+#   * libusb is built from source (MSYS2 no longer ships it for the mingw
+#     targets) and so is Hamlib, at 4.5.5 with --disable-winradio;
+#   * OmniRig is not installed: dumpcpp is pointed at OmniRig.tlb directly
+#     (-DOMNIRIG_TLB_PATH), avoiding the WOW64 registry-view mismatch.
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version string used in artifact and installer names"
+        required: false
+        default: "3.0.0-2.0.19-hop"
+        type: string
+
+env:
+  WSJTZ_VERSION: ${{ inputs.version || '3.0.0-2.0.19-hop' }}
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    runs-on: windows-latest
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Disable core.autocrlf
+        shell: pwsh
+        run: git config --global core.autocrlf false
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-gcc-fortran
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-qt5-base
+            mingw-w64-ucrt-x86_64-qt5-multimedia
+            mingw-w64-ucrt-x86_64-qt5-serialport
+            mingw-w64-ucrt-x86_64-qt5-websockets
+            mingw-w64-ucrt-x86_64-qt5-svg
+            mingw-w64-ucrt-x86_64-qt5-tools
+            mingw-w64-ucrt-x86_64-qt5-activeqt
+            mingw-w64-ucrt-x86_64-fftw
+            mingw-w64-ucrt-x86_64-boost
+            mingw-w64-ucrt-x86_64-portaudio
+            mingw-w64-ucrt-x86_64-openssl
+            mingw-w64-ucrt-x86_64-readline
+            mingw-w64-ucrt-x86_64-nsis
+            autoconf
+            automake
+            libtool
+            make
+            curl
+
+      - name: Pin GCC to 14.2.0-3
+        run: |
+          BASE=https://repo.msys2.org/mingw/ucrt64
+          pacman -U --noconfirm --nodeps \
+            --overwrite '/ucrt64/lib/*' --overwrite '/ucrt64/share/info/*' \
+            "${BASE}/mingw-w64-ucrt-x86_64-gcc-14.2.0-3-any.pkg.tar.zst" \
+            "${BASE}/mingw-w64-ucrt-x86_64-gcc-fortran-14.2.0-3-any.pkg.tar.zst"
+          gcc --version | head -1
+          gfortran --version | head -1
+
+      - name: Prepare OmniRig type library and dumpcpp
+        run: |
+          # qt5-activeqt ships dumpcpp as dumpcpp-qt5.exe; CMakeLists.txt and
+          # QtAxMacros.cmake look for the plain name.
+          cp /ucrt64/bin/dumpcpp-qt5.exe /ucrt64/bin/dumpcpp.exe
+          curl -sL -o OmniRig.tlb \
+            https://raw.githubusercontent.com/VE3NEA/OmniRig/master/OmniRig.tlb
+          ls -la OmniRig.tlb
+
+      - name: Refresh bundled OpenSSL DLLs from the live toolchain
+        run: |
+          # The committed DLLs go stale whenever MSYS2 rolls OpenSSL forward;
+          # Qt5 builds against whatever this run has, so copy those exact files.
+          cp /ucrt64/bin/libssl-3-x64.dll    contrib/tls/libssl-3-x64.dll
+          cp /ucrt64/bin/libcrypto-3-x64.dll contrib/tls/libcrypto-3-x64.dll
+          cp /ucrt64/bin/zlib1.dll           contrib/tls/zlib1.dll
+          ls -la contrib/tls/
+
+      - name: Build and install libusb 1.0.27
+        run: |
+          curl -L https://github.com/libusb/libusb/releases/download/v1.0.27/libusb-1.0.27.tar.bz2 | tar xj
+          cd libusb-1.0.27
+          ./configure --prefix=/ucrt64 --disable-static
+          make -j$(nproc)
+          make install
+
+      - name: Build and install Hamlib 4.5.5
+        run: |
+          curl -L https://github.com/Hamlib/Hamlib/releases/download/4.5.5/hamlib-4.5.5.tar.gz | tar xz
+          cd hamlib-4.5.5
+          ./configure \
+            --prefix=/ucrt64 \
+            --disable-static \
+            --without-cxx-binding \
+            --disable-winradio \
+            --without-readline
+
+          # Current mingw-w64 headers provide getaddrinfo/freeaddrinfo and
+          # struct addrinfo, but Hamlib's configure probes do not link ws2_32
+          # and fail, so its config.h declares conflicting copies and the build
+          # dies with "redefinition of struct addrinfo".  Assert the features.
+          { printf '#define HAVE_WS2TCPIP_H 1\n#define HAVE_GETADDRINFO 1\n#define HAVE_FREEADDRINFO 1\n#define HAVE_STRUCT_ADDRINFO 1\n#define HAVE_DECL_GAI_STRERROR 1\n'
+            cat include/hamlib/config.h
+          } > /tmp/hamlib-config.h
+          mv /tmp/hamlib-config.h include/hamlib/config.h
+
+          # microham.c is a POSIX backend that is still compiled on Windows and
+          # needs winsock's fd_set/select declarations.
+          sed -i '1i #include <winsock2.h>' src/microham.c
+
+          make -j$(nproc)
+          make install
+
+      - name: Configure
+        run: |
+          mkdir -p build && cd build
+          cmake -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/ucrt64 \
+            -DCMAKE_PREFIX_PATH=/ucrt64 \
+            -DCMAKE_Fortran_FLAGS="-fallow-argument-mismatch -std=legacy" \
+            -DCMAKE_CXX_STANDARD_LIBRARIES="-lws2_32" \
+            -DWSJT_SKIP_MANPAGES=ON \
+            -DWSJT_GENERATE_DOCS=OFF \
+            -DOMNIRIG_TLB_PATH="$(cd .. && pwd)/OmniRig.tlb" \
+            ..
+
+      - name: Build
+        run: |
+          cd build
+          ninja -j$(nproc)
+
+      - name: Run unit tests
+        id: ctest
+        continue-on-error: true
+        env:
+          # test_qt_helpers builds a QApplication; with no display it aborts
+          # instead of skipping, which is why this must be offscreen.
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          cd build
+          ctest --output-on-failure
+
+      - name: Package NSIS installer
+        run: |
+          cd build
+          cpack -G NSIS -D CPACK_PACKAGE_VERSION="${WSJTZ_VERSION}"
+          ls -lh *-win64.exe
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: wsjtz-${{ env.WSJTZ_VERSION }}-windows-x86_64-installer
+          path: build/*-win64.exe
+          retention-days: 30
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: wsjtz-${{ env.WSJTZ_VERSION }}-windows-x86_64-binaries
+          path: |
+            build/jt9.exe
+            build/wsjtx.exe
+          retention-days: 30
+
+
+
+
