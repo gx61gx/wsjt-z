@@ -148,7 +148,8 @@ jobs:
             -DCMAKE_Fortran_FLAGS="-fallow-argument-mismatch -std=legacy" \
             -DCMAKE_CXX_FLAGS="-static-libgcc -static-libstdc++" \
             -DCMAKE_C_FLAGS="-static-libgcc" \
-            -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++ -static-libgfortran -lws2_32" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++ -static-libgfortran" \
+            -DCMAKE_CXX_STANDARD_LIBRARIES="-lws2_32" \
             -DWSJT_SKIP_MANPAGES=ON \
             -DWSJT_GENERATE_DOCS=OFF \
             -DOMNIRIG_TLB_PATH="$(cd .. && pwd)/OmniRig.tlb" \
@@ -191,6 +192,7 @@ jobs:
             build/jt9.exe
             build/wsjtx.exe
           retention-days: 30
+
 
 
 
