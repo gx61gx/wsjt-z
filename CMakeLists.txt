@@ -1831,14 +1831,13 @@ install (DIRECTORY
 # Without these Qt's QSslSocket reports "TLS initialization failed" and
 # PSKReporter spotting fails. Mirrors wsjtx-orig.
 if (WIN32)
-  install (FILES
-    contrib/tls/libssl-1_1.dll
-    contrib/tls/libcrypto-1_1.dll
-    contrib/tls/libssl-1_1-x64.dll
-    contrib/tls/libcrypto-1_1-x64.dll
+  # Ship every DLL in contrib/tls: which OpenSSL major Qt5 links against
+  # depends on the MSYS2 toolchain, and the CI refresh step drops the
+  # current ones in there.  A fixed list silently shipped stale copies.
+  install (DIRECTORY contrib/tls/
     DESTINATION ${CMAKE_INSTALL_BINDIR}
-    #COMPONENT runtime
-  )
+    FILES_MATCHING PATTERN "*.dll"
+    )
 endif (WIN32)
 
 #

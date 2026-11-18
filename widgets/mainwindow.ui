@@ -1053,8 +1053,18 @@ QLabel[oob=&quot;true&quot;] {
        </property>
        <layout class="QGridLayout" name="gridLayout_13">
         <item row="0" column="0">
-         <layout class="QVBoxLayout" name="L_Right" stretch="1,0,0,0">
+         <layout class="QVBoxLayout" name="L_Right">
           <item>
+           <widget class="QSplitter" name="right_splitter">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="childrenCollapsible">
+             <bool>false</bool>
+            </property>
+            <widget class="QWidget" name="rx_pane">
+             <layout class="QVBoxLayout" name="rx_pane_layout">
+              <item>
            <layout class="QVBoxLayout" name="L_Right_RXFrequency">
             <item>
              <widget class="QLabel" name="rh_decodes_title_label">
@@ -1201,21 +1211,25 @@ QLabel[oob=&quot;true&quot;] {
             </item>
            </layout>
           </item>
-          <item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="ctrl_pane">
+             <layout class="QVBoxLayout" name="ctrl_pane_layout">
+              <item>
            <layout class="QGridLayout" name="L_Right_Controls">
             <item row="1" column="0">
              <widget class="QStackedWidget" name="controls_stack_widget">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>280</height>
+               </size>
+              </property>
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+               <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>220</height>
-               </size>
               </property>
               <property name="currentIndex">
                <number>0</number>
@@ -4491,7 +4505,7 @@ list. The list can be maintained in Settings (F2).</string>
             </item>
            </layout>
           </item>
-          <item>
+              <item>
            <layout class="QHBoxLayout" name="L_Right_Controls_Middle" stretch="0,0,0,0,0,0,0,0">
             <property name="spacing">
              <number>5</number>
@@ -4688,7 +4702,7 @@ list. The list can be maintained in Settings (F2).</string>
             </item>
            </layout>
           </item>
-          <item>
+              <item>
            <layout class="QHBoxLayout" name="L_Right_Bottom" stretch="0,2,0,1,0">
             <property name="spacing">
              <number>5</number>
@@ -4825,6 +4839,10 @@ list. The list can be maintained in Settings (F2).</string>
              </widget>
             </item>
            </layout>
+          </item>
+             </layout>
+            </widget>
+           </widget>
           </item>
          </layout>
         </item>
