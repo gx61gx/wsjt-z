@@ -22,7 +22,7 @@ ActiveStations::ActiveStations(QSettings * settings, QFont const& font, QWidget 
   ui(new Ui::ActiveStations)
 {
   ui->setupUi(this);
-  setWindowTitle (QApplication::applicationName () + " - " + tr ("Active Stations"));
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - " + tr ("Active Stations"));
   ui->RecentStationsPlainTextEdit->setReadOnly (true);
   changeFont (font);
   read_settings ();

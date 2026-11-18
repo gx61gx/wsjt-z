@@ -515,7 +515,7 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
         m_config.udp_server_name (), m_config.udp_server_port (),
         m_config.udp_interface_names (), m_config.udp_TTL (),
         this}},
-  m_psk_Reporter {&m_config, QString {"WSJT-X v" + version () + " " + m_revision}.simplified ()},
+  m_psk_Reporter {&m_config, QString {"WSJT-Q " + QStringLiteral (WSJTQ_VERSION) + " " + m_revision}.simplified ()},
   m_manual {&m_network_manager},
   m_block_udp_status_updates {false}
 {
@@ -922,7 +922,7 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
       if (m_pskReporterView) m_pskReporterView->setFont(font);
     });
 
-  setWindowTitle (program_title () + " (WSJT-Z MOD by SQ9FVE " + QStringLiteral (VERSION_Z) + ")");
+  setWindowTitle (QStringLiteral ("WSJT-Q ") + QStringLiteral (WSJTQ_VERSION));
 
 
   connect(&proc_jt9, &QProcess::readyReadStandardOutput, this, &MainWindow::readFromStdout);
@@ -3357,7 +3357,7 @@ QString MainWindow::userAgent() {
   QString platform = "(" + QSysInfo::prettyProductName()+"; "+QSysInfo::productType() + " " + QSysInfo::productVersion() + "; " +
                      QSysInfo::currentCpuArchitecture() + "; " +
                      QString("rv:%1").arg(QSysInfo::kernelVersion()) + ")";
-  QString userAgent = QString{"WSJT-X/" + version() + "_" + m_revision}.simplified() + " " +platform;
+  QString userAgent = QString{"WSJT-Q/" + QStringLiteral (WSJTQ_VERSION) + "_" + m_revision}.simplified() + " " +platform;
   return userAgent;
   }
 
@@ -15771,21 +15771,23 @@ void MainWindow::switchBand(int row) {
 void MainWindow::ZMessage ()
 {
     QString rev = revision();
-    QString versionZ = QStringLiteral(VERSION_Z);
-    QString revText = QString("Version %1 - %2").arg(versionZ, rev);
-    
-    QString message = QString(
-        "<h2>WSJT-Z</h2>"
-        "<p>%1</p>"
-        "<p><b>Resources:</b></p>"
-        "<ul>"
-        "<li><a href='https://groups.io/g/WSJT-Z/topics'>WSJT-Z on groups.io for support.</a></li>"
-        "<li><a href='https://github.com/sq9fve/wsjt-z'>Download WSJT-Z on GitHub.</a></li>"
-        "<li><a href='https://github.com/sq9fve/wsjt-z/tree/master/docs'>WSJT-Z Documentation on GitHub.</a></li>"
-        "</ul>"
-        "<p><b><a href='https://groups.io/g/WSJT-Z/topic/wsjt_z_charity_event_radio/86127241'>Donate to WSJT-Z Charity Event</a></b></p>"
-        "<p><i>Special thanks to all our beta testers for their contributions and feedback.</i></p>"
-    ).arg(revText);
+    QString revText = QString ("Version %1 - %2").arg (QStringLiteral (WSJTQ_VERSION), rev);
+
+QString message = QString (
+"<h2>WSJT-Q %1</h2>"
+"<p>%2</p>"
+"<p>A private fork of WSJT-Z: regex prefix filtering, selectable band hopping "
+"and LoTW confirmations read from an external log file.</p>"
+"<p><b>Based on:</b> WSJT-Z %3 by SQ9FVE, itself a fork of WSJT-X %4 by the "
+"WSJT Development Group (K1JT).</p>"
+"<p><b>Upstream resources:</b></p>"
+"<ul>"
+"<li><a href='https://groups.io/g/WSJT-Z/topics'>WSJT-Z on groups.io for support.</a></li>"
+"<li><a href='https://github.com/sq9fve/wsjt-z'>WSJT-Z source on GitHub.</a></li>"
+"</ul>"
+"<p><i>Licensed under the GPLv3; the vast majority of the code is by the WSJT "
+"Development Group and the WSJT-Z author.</i></p>"
+).arg (QStringLiteral (WSJTQ_VERSION), revText, QStringLiteral (VERSION_Z), version ());
 
     MessageBox::information_message(this, message);
 }

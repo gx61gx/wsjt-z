@@ -20,7 +20,7 @@ QSYMonitor::QSYMonitor(QSettings * settings, QFont const& font, Configuration co
   ui(new Ui::QSYMonitor)
 {
   ui->setupUi(this);
-  setWindowTitle (QApplication::applicationName () + " - " + tr ("QSY Monitor"));
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - " + tr ("QSY Monitor"));
   ui->QSYMonitorTextBrowser->setReadOnly (true);
   changeFont (font);
   read_settings ();

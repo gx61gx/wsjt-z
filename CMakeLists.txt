@@ -66,7 +66,7 @@ set (wsjtx_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
 # project information
 #
 ## // Z
-set (PROJECT_BUNDLE_NAME "WSJT-Z")
+set (PROJECT_BUNDLE_NAME "WSJT-Q")
 set (PROJECT_VENDOR "SQ9FVE")
 set (PROJECT_CONTACT "SQ9FVE")
 set (PROJECT_COPYRIGHT "Copyright (C) 2001-2026 by SQ9FVE")
@@ -76,7 +76,8 @@ set (PROJECT_MANUAL_DIRECTORY_URL https://groups.io/g/WSJT-Z)
 set (PROJECT_SAMPLES_URL https://sourceforge.net/projects/wsjt/files/)
 #set (PROJECT_SAMPLES_UPLOAD_DEST frs.sourceforge.net:/home/frs/project/wsjt/)
 # WSJT-Z mod version suffix shown in UI and package metadata.
-set (VERSION_Z "2.0.19")
+set (VERSION_Z "2.0.19")           # upstream WSJT-Z base this fork is built on
+set (WSJTQ_VERSION "1.0.0")        # this fork's own version
 message (STATUS "******************************************************")
 message (STATUS "Building ${PROJECT_BUNDLE_NAME} ${VERSION_Z} (base WSJT-X ${PROJECT_VERSION}) for ${CMAKE_SYSTEM_NAME}-${PROJECT_ARCHITECTURE}")
 message (STATUS "******************************************************")
@@ -1936,11 +1937,11 @@ endif ()
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/package_description.txt")
 set (CPACK_MONOLITHIC_INSTALL 1)
 ## Z
-set (CPACK_PACKAGE_NAME "wsjtz")
+set (CPACK_PACKAGE_NAME "wsjtz-q")
 set (CPACK_PACKAGE_VERSION_Z "${VERSION_Z}")
-set (CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-set (CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-set (CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}-${CPACK_PACKAGE_VERSION_Z}")
+set (CPACK_PACKAGE_VERSION_MAJOR 1)
+set (CPACK_PACKAGE_VERSION_MINOR 0)
+set (CPACK_PACKAGE_VERSION_PATCH 0)
 
 
 

@@ -26,7 +26,7 @@ public:
   explicit CallsignDialog (QWidget * parent = nullptr)
     : QDialog {parent}
   {
-    setWindowTitle (QApplication::applicationName () + " - " + tr ("Callsign"));
+    setWindowTitle (QStringLiteral ("WSJT-Q") + " - " + tr ("Callsign"));
     
     callsign_.setValidator (new QRegExpValidator {QRegExp {"[A-Za-z0-9]+"}, this});
     

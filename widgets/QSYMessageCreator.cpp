@@ -31,7 +31,7 @@ QSYMessageCreator::QSYMessageCreator(QSettings * settings, Configuration const *
     configuration_ {configuration},
     ui(new Ui::QSYMessageCreator) {
   ui->setupUi(this);
-  setWindowTitle (QApplication::applicationName () + " - " + tr ("MessageCreator"));
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - " + tr ("MessageCreator"));
   QButtonGroup *modeButtonGroup = new QButtonGroup;
   modeButtonGroup-> setExclusive(true);
   modeButtonGroup->addButton(ui->radioButFM);

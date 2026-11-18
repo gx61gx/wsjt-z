@@ -45,7 +45,7 @@ Astro::Astro(QSettings * settings, Configuration const * configuration, QWidget 
   //, m_dx_two_way_dop {0}
 {
   ui_->setupUi (this);
-  setWindowTitle (QApplication::applicationName () + " - " + tr ("Astronomical Data"));
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - " + tr ("Astronomical Data"));
   setBackgroundRole (QPalette::Base);
   setAutoFillBackground (true);
   connect (ui_->cbDopplerTracking, &QAbstractButton::toggled, ui_->doppler_widget, &QWidget::setVisible);

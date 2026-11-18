@@ -15,7 +15,7 @@ EchoGraph::EchoGraph(QSettings * settings, QWidget *parent) :
   ui(new Ui::EchoGraph)
 {
   ui->setupUi(this);
-  setWindowTitle (QApplication::applicationName () + " - " + tr ("Echo Graph"));
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - " + tr ("Echo Graph"));
   installEventFilter(parent);                   //Installing the filter
   ui->echoPlot->setCursor(Qt::CrossCursor);
   setMaximumWidth(2048);

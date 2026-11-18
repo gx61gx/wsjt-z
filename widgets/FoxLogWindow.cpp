@@ -38,7 +38,7 @@ FoxLogWindow::FoxLogWindow (QSettings * settings, Configuration const * configur
   : AbstractLogWindow {"Fox Log Window", settings, configuration, parent}
   , m_ {fox_log}
 {
-  setWindowTitle (QApplication::applicationName () + " - Fox Log");
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - Fox Log");
   m_->ui_.setupUi (this);
   m_->ui_.log_table_view->setModel (m_->log_->model ());
   set_log_view (m_->ui_.log_table_view);

@@ -15,7 +15,7 @@ ColorHighlighting::ColorHighlighting (QSettings * settings, DecodeHighlightingMo
   , settings_ {settings}
 {
   ui->setupUi(this);
-  setWindowTitle (QApplication::applicationName () + " - Colors");
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - Colors");
   read_settings ();
   set_items (highlight_model);
 }

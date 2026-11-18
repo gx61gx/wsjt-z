@@ -23,7 +23,7 @@ ExportCabrillo::ExportCabrillo (QSettings * settings, Configuration const * conf
 {
   ui->setupUi (this);
   read_settings ();
-  setWindowTitle (QApplication::applicationName() + " - Export Cabrillo");
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - Export Cabrillo");
   connect (ui->buttonBox, &QDialogButtonBox::accepted, this, &ExportCabrillo::save_log);
 }
 

@@ -16,7 +16,7 @@ MessageAveraging::MessageAveraging(QSettings * settings, QFont const& font, QWid
   ui(new Ui::MessageAveraging)
 {
   ui->setupUi(this);
-  setWindowTitle (QApplication::applicationName () + " - " + tr ("Message Averaging"));
+  setWindowTitle (QStringLiteral ("WSJT-Q") + " - " + tr ("Message Averaging"));
   ui->msgAvgPlainTextEdit->setReadOnly (true);
   changeFont (font);
   read_settings ();
