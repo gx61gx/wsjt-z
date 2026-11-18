@@ -3621,7 +3621,7 @@ list. The list can be maintained in Settings (F2).</string>
                        <string>Others</string>
                       </attribute>
                       <layout class="QGridLayout" name="gridLayout_8" columnstretch="2,1">
-                       <item row="0" column="1">
+                       <item row="1" column="0" colspan="2">
                         <widget class="QGroupBox" name="cb_autoModeSwitch">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
@@ -3723,7 +3723,7 @@ list. The list can be maintained in Settings (F2).</string>
                          </layout>
                         </widget>
                        </item>
-                       <item row="1" column="1">
+                       <item row="2" column="0" colspan="2">
                         <layout class="QHBoxLayout" name="horizontalLayout_5">
                          <property name="spacing">
                           <number>6</number>
@@ -3756,7 +3756,7 @@ list. The list can be maintained in Settings (F2).</string>
                          </item>
                         </layout>
                        </item>
-                       <item row="2" column="0" colspan="2">
+                       <item row="3" column="0" colspan="2">
                         <layout class="QHBoxLayout" name="horizontalLayout_17">
                          <item>
                           <widget class="QCheckBox" name="cbCQonlyIncl73">
@@ -3834,7 +3834,7 @@ list. The list can be maintained in Settings (F2).</string>
                          </item>
                         </layout>
                        </item>
-                       <item row="3" column="0" colspan="2">
+                       <item row="4" column="0" colspan="2">
                         <widget class="QGroupBox" name="gb_autoHop">
                          <property name="title">
                           <string>Auto band hop</string>
@@ -3985,7 +3985,7 @@ list. The list can be maintained in Settings (F2).</string>
 </layout>
                         </widget>
                        </item>
-                       <item row="0" column="0" rowspan="2">
+                       <item row="0" column="0" colspan="2">
                         <widget class="QGroupBox" name="cb_bandHopper">
                          <property name="title">
                           <string>Band hopping</string>
@@ -4008,6 +4008,12 @@ list. The list can be maintained in Settings (F2).</string>
                           </property>
                           <item>
                            <widget class="QPlainTextEdit" name="pte_bandHopper">
+                            <property name="maximumSize">
+                             <size>
+                              <width>16777215</width>
+                              <height>120</height>
+                             </size>
+                            </property>
                             <property name="enabled">
                              <bool>true</bool>
                             </property>
