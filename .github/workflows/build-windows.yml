@@ -23,11 +23,11 @@ on:
       version:
         description: "Version string used in artifact and installer names"
         required: false
-        default: "3.0.0-2.0.19-hop"
+        default: "1.0.0"
         type: string
 
 env:
-  WSJTZ_VERSION: ${{ inputs.version || '3.0.0-2.0.19-hop' }}
+  WSJTZ_VERSION: ${{ inputs.version || '1.0.0' }}
 
 jobs:
   build:
