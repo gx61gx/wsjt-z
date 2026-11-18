@@ -95,11 +95,12 @@ jobs:
 
       - name: Refresh bundled OpenSSL DLLs from the live toolchain
         run: |
-          # The committed DLLs go stale whenever MSYS2 rolls OpenSSL forward;
-          # Qt5 builds against whatever this run has, so copy those exact files.
-          cp /ucrt64/bin/libssl-3-x64.dll    contrib/tls/libssl-3-x64.dll
-          cp /ucrt64/bin/libcrypto-3-x64.dll contrib/tls/libcrypto-3-x64.dll
-          cp /ucrt64/bin/zlib1.dll           contrib/tls/zlib1.dll
+          # The committed DLLs are OpenSSL 1.1; this toolchain ships a newer
+          # major (the version suffix moves), so copy whatever is present
+          # alongside them and never fail the build over it.
+          for f in /ucrt64/bin/libssl-*.dll /ucrt64/bin/libcrypto-*.dll /ucrt64/bin/zlib1.dll; do
+            if [ -f "$f" ]; then cp -f "$f" contrib/tls/; fi
+          done
           ls -la contrib/tls/
 
       - name: Build and install libusb 1.0.27
@@ -173,11 +174,34 @@ jobs:
           cpack -G NSIS -D CPACK_PACKAGE_VERSION="${WSJTZ_VERSION}"
           ls -lh *-win64.exe
 
+      - name: Fix the bundled GCC runtime DLLs
+        run: |
+          # The compiler is pinned to GCC 14 but gcc-libs is not, so CPack
+          # stages a libstdc++/libgcc_s from a newer GCC that no longer exports
+          # the emulated-TLS symbols the pinned compiler emits.  Installing the
+          # result fails with:
+          #   "entry point __emutls_v._ZSt11__once_call could not be located"
+          # Swap in the matching runtime and rebuild the installer from CPack's
+          # staging directory.
+          curl -sL -o /tmp/gcc-libs.pkg.tar.zst \
+            https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gcc-libs-14.2.0-3-any.pkg.tar.zst
+          mkdir -p /tmp/gcc14rt && tar -xf /tmp/gcc-libs.pkg.tar.zst -C /tmp/gcc14rt
+          STAGE=$(ls -d build/_CPack_Packages/win64/NSIS/*-win64 | head -1)
+          cp -f /tmp/gcc14rt/ucrt64/bin/libstdc++-6.dll \
+                /tmp/gcc14rt/ucrt64/bin/libgcc_s_seh-1.dll "$STAGE/bin/"
+          objdump -p "$STAGE/bin/libstdc++-6.dll" | grep -c "__once_call"
+          cd build/_CPack_Packages/win64/NSIS
+          rm -f *-win64.exe
+          makensis project.nsi
+          ls -lh *-win64.exe
+
       - name: Upload installer
         uses: actions/upload-artifact@v7
         with:
           name: wsjtz-${{ env.WSJTZ_VERSION }}-windows-x86_64-installer
-          path: build/*-win64.exe
+          path: |
+            build/*-win64.exe
+            build/_CPack_Packages/win64/NSIS/*-win64.exe
           retention-days: 30
 
       - name: Upload binaries
@@ -188,6 +212,7 @@ jobs:
             build/jt9.exe
             build/wsjtx.exe
           retention-days: 30
+
 
 
 
