@@ -2083,10 +2083,13 @@ void MainWindow::readSettings()
   ui->sb_autoHopInterval->setValue(m_settings->value("autoBandHopInterval", 5).toInt());
   // Confirmation source; empty keeps the historical "use the log itself".
   ui->le_confirmationLog->setText (m_settings->value ("confirmationLog").toString ());
-  if (!ui->le_confirmationLog->text ().isEmpty ())
+  if (!ui->le_confirmationLog->text ().isEmpty ()
+      && ui->le_confirmationLog->text () != m_logBook.confirmation_log ())
     {
-      // The worked-before index is already loading by the time settings are
-      // read, so the confirmation source only takes effect on a fresh scan.
+      // Settings are read after the log book has started scanning, so a
+      // configured source needs one more scan to take effect.  The scanner
+      // coalesces overlapping requests instead of running them concurrently.
+      m_logBook.set_confirmation_log (ui->le_confirmationLog->text ());
       m_logBook.rescan ();
     }
 

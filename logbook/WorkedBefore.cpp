@@ -406,12 +406,25 @@ public:
   {
   }
 
+  // A scan must never overlap another one: prefixes_ is shared with the
+  // worker, and reloading it underneath a running scan corrupted the heap
+  // (0xc0000374) when a saved confirmation source triggered a rescan while the
+  // initial scan was still running.  Further requests are coalesced instead.
   void reload ()
   {
+    if (loading_)
+      {
+        pending_ = true;
+        return;
+      }
+    loading_ = true;
     prefixes_.reload (configuration_);
     async_loader_ = QtConcurrent::run (loader, path_, confirmation_path_, &prefixes_);
     loader_watcher_.setFuture (async_loader_);
   }
+
+  bool loading_ {false};
+  bool pending_ {false};
 
   Configuration const * configuration_;
   QString path_;
@@ -445,6 +458,7 @@ WorkedBefore::WorkedBefore (Configuration const * configuration)
           auto loaded = m_->loader_watcher_.result ();
           m_->all_worked_ = std::move (loaded.all);
           m_->lotw_confirmed_ = std::move (loaded.lotw_confirmed);
+          m_->loading_ = false;
           m_->confirmed_count_ = static_cast<int> (m_->lotw_confirmed_.size ());
           n = m_->all_worked_.size ();
         }
@@ -456,6 +470,11 @@ WorkedBefore::WorkedBefore (Configuration const * configuration)
       LOG_DEBUG(QString{"WorkedBefore::reload: CTY.DAT version %1"}.arg (cty_ver));
       Q_EMIT finished_loading (n, cty_ver, error);
       Q_EMIT confirmations_loaded (m_->confirmed_count_);
+      if (m_->pending_)
+        {
+          m_->pending_ = false;
+          m_->reload ();
+        }
     });
   reload ();
 }
