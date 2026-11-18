@@ -95,9 +95,11 @@ jobs:
 
       - name: Refresh bundled OpenSSL DLLs from the live toolchain
         run: |
-          # The committed DLLs are OpenSSL 1.1; this toolchain ships a newer
-          # major (the version suffix moves), so copy whatever is present
-          # alongside them and never fail the build over it.
+          # contrib/tls ships OpenSSL 3.x because that is what this Qt5
+          # (5.15.19) loads: QSslSocket probes libssl-3-x64 / libcrypto-3-x64
+          # by name.  MSYS2 only carries 4.x now, which Qt5 ignores, so the
+          # 3.x pair is vendored in the repo.  Copy the toolchain's current
+          # OpenSSL alongside them (harmless, future-proofs a Qt rebuild).
           for f in /ucrt64/bin/libssl-*.dll /ucrt64/bin/libcrypto-*.dll /ucrt64/bin/zlib1.dll; do
             if [ -f "$f" ]; then cp -f "$f" contrib/tls/; fi
           done
