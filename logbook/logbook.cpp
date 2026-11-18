@@ -16,6 +16,7 @@ LogBook::LogBook (Configuration const * configuration)
 {
   Q_ASSERT (configuration);
   connect (&worked_before_, &WorkedBefore::finished_loading, this, &LogBook::finished_loading);
+  connect (&worked_before_, &WorkedBefore::confirmations_loaded, this, &LogBook::confirmations_loaded);
 }
 
 LogBook::~LogBook ()

@@ -2988,14 +2988,45 @@ list. The list can be maintained in Settings (F2).</string>
                          <item>
                           <widget class="QCheckBox" name="cb_f_AllowUnconfirmed">
                            <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use LoTW confirmations when evaluating the New and New on band filters.&lt;/p&gt;&lt;p&gt;When enabled, a Call, DXCC, Continent, Grid, CQ zone, or ITU zone counts as worked only when a matching ADIF record contains &lt;tt&gt;LOTW_QSL_RCVD=Y&lt;/tt&gt;. Records marked unconfirmed or without that field remain eligible.&lt;/p&gt;&lt;p&gt;Export your log from Wavelog, replace &lt;tt&gt;wsjtx_log.adi&lt;/tt&gt;, and rescan the ADIF log to refresh confirmation status. LOTW Only and other filters are unaffected.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use LoTW confirmations when evaluating the New and New on band filters.&lt;/p&gt;&lt;p&gt;When enabled, a Call, DXCC, Continent, Grid, CQ zone, or ITU zone counts as worked only when a matching ADIF record contains &lt;tt&gt;LOTW_QSL_RCVD=Y&lt;/tt&gt;. Records marked unconfirmed or without that field remain eligible.&lt;/p&gt;&lt;p&gt;Confirmations come from the file named next to this option (a qlog or Wavelog export, or a LoTW report); leave it empty to use &lt;tt&gt;wsjtx_log.adi&lt;/tt&gt; itself. Press &lt;tt&gt;Rescan&lt;/tt&gt; after replacing that file. LOTW Only and other filters are unaffected.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
                            <property name="text">
                             <string>Allow Unconfirmed</string>
                            </property>
                           </widget>
                          </item>
-                         <item>
+                                                  <item>
+                          <layout class="QHBoxLayout" name="confirmationLogLayout">
+                           <item>
+                            <widget class="QLabel" name="lab_confirmationLog">
+                             <property name="text"><string>Confirmations:</string></property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="le_confirmationLog">
+                             <property name="readOnly"><bool>true</bool></property>
+                             <property name="placeholderText"><string>use the worked-before log</string></property>
+                             <property name="toolTip"><string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ADIF file to read LoTW confirmations from.&lt;/p&gt;&lt;p&gt;Leave empty to use the worked-before log itself (the old behaviour). Point it at a full log export from qlog or a LoTW report to keep confirmations separate from the live log.&lt;/p&gt;&lt;p&gt;Records count as confirmed when they carry LOTW_QSL_RCVD=Y, APP_LOTW_QSL_RCVD=Y or QSL_RCVD=Y.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string></property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QPushButton" name="pb_browseConfirmationLog">
+                             <property name="text"><string>Browse</string></property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QPushButton" name="pb_rescanConfirmations">
+                             <property name="text"><string>Rescan</string></property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="lab_confirmationCount">
+                             <property name="text"><string>–</string></property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+<item>
                           <widget class="QCheckBox" name="cb_f_LOTW">
                            <property name="toolTip">
                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show only stations registered with LOTW&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

@@ -26,6 +26,12 @@ public:
   ~WorkedBefore ();
 
   Q_SLOT void reload ();
+
+  // ADIF file to read LoTW confirmations from.  Empty (the default) means the
+  // confirmations come from the worked-before log itself.
+  Q_SLOT void set_confirmation_log (QString const& path);
+  QString confirmation_log () const;
+  int confirmed_count () const;
   Q_SLOT bool add (QString const& call
                    , QString const& grid
                    , QString const& band
@@ -53,6 +59,7 @@ public:
   QString cty_version () const;
 
   Q_SIGNAL void finished_loading (int worked_before_record_count, QString const, QString const& error) const;
+  Q_SIGNAL void confirmations_loaded (int confirmed_count) const;
 
 private:
   class impl;

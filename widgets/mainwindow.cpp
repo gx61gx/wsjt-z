@@ -687,6 +687,27 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
         }
     });
 
+  // LoTW confirmations can come from a separate ADIF file (a qlog export or a
+  // LoTW report) instead of the worked-before log itself.
+  connect (&m_logBook, &LogBook::confirmations_loaded, this, [this] (int count) {
+      ui->lab_confirmationCount->setText (count ? tr ("%1 confirmed").arg (count) : tr ("none"));
+    });
+  connect (ui->pb_browseConfirmationLog, &QPushButton::clicked, this, [this] {
+      auto const file = QFileDialog::getOpenFileName (
+          this, tr ("Select confirmation log"),
+          m_config.writeable_data_dir ().absolutePath (),
+          tr ("ADIF files (*.adi *.ADI);;All files (*)"));
+      if (file.isEmpty ()) return;
+      ui->le_confirmationLog->setText (file);
+      m_settings->setValue ("confirmationLog", file);
+      m_logBook.set_confirmation_log (file);
+      m_logBook.rescan ();
+    });
+  connect (ui->pb_rescanConfirmations, &QPushButton::clicked, this, [this] {
+      m_logBook.set_confirmation_log (ui->le_confirmationLog->text ());
+      m_logBook.rescan ();
+    });
+
   // Network message handlers
   m_messageClient->enable (m_config.accept_udp_requests ());
   connect (m_messageClient, &MessageClient::clear_decodes, [this] (quint8 window) {
@@ -1809,6 +1830,7 @@ void MainWindow::writeSettings()
       }
   }
   m_settings->setValue ("autoBandHopBands", hop_bands);
+  m_settings->setValue ("confirmationLog", ui->le_confirmationLog->text ());
   m_settings->setValue ("AutoCallPreferPSKSpotted", ui->cb_autoCallPreferPSKSpotted->isChecked());
 
   m_settings->setValue ("AutoCallPriority", ui->cb_autoCallPriority->currentIndex());
@@ -2059,6 +2081,15 @@ void MainWindow::readSettings()
   ui->gb_autoHop->setChecked(m_settings->value("autoBandHopEnabled", false).toBool()
                              && !ui->cb_bandHopper->isChecked());
   ui->sb_autoHopInterval->setValue(m_settings->value("autoBandHopInterval", 5).toInt());
+  // Confirmation source; empty keeps the historical "use the log itself".
+  ui->le_confirmationLog->setText (m_settings->value ("confirmationLog").toString ());
+  if (!ui->le_confirmationLog->text ().isEmpty ())
+    {
+      // The worked-before index is already loading by the time settings are
+      // read, so the confirmation source only takes effect on a fresh scan.
+      m_logBook.rescan ();
+    }
+
   // An absent setting means "all bands", so a first run or an older
   // settings file keeps every band eligible.
   {

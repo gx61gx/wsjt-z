@@ -286,94 +286,115 @@ namespace
     return QString {};
   }
 
-  worked_before_databases loader (QString const& path, AD1CCty const * prefixes)
+  worked_before_databases loader (QString const& path, QString const& confirmation_path,
+                                  AD1CCty const * prefixes)
   {
     worked_before_databases worked;
-    QFile inputFile {path};
-    if (inputFile.exists ())
-      {
-        if (inputFile.open (QFile::ReadOnly))
-          {
-            QTextStream in {&inputFile};
-            QString buffer;
-            bool pre_read {false};
-            int end_position {-1};
 
-            // skip optional header record
+    // Parses one ADIF file into either or both indexes.  A missing file simply
+    // contributes nothing; an unreadable one is reported.
+    auto parse_file = [&] (QString const& file, bool into_all, bool into_confirmed)
+      {
+        QFile inputFile {file};
+        if (!inputFile.exists ())
+          {
+            return;
+          }
+        if (!inputFile.open (QFile::ReadOnly))
+          {
+            throw LoaderException (std::runtime_error {
+                QCoreApplication::translate ("WorkedBefore", "Error opening ADIF file for read: %0")
+                .arg (file + ": " + inputFile.errorString ()).toLocal8Bit ()});
+          }
+
+        QTextStream in {&inputFile};
+        QString buffer;
+        bool pre_read {false};
+        int end_position {-1};
+
+        // skip optional header record
+        do
+          {
+            buffer += in.readLine () + '\n';
+            if (buffer.startsWith (QChar {'<'})) // denotes no header
+              {
+                pre_read = true;
+              }
+            else
+              {
+                end_position = buffer.indexOf ("<EOH>", 0, Qt::CaseInsensitive);
+              }
+          }
+        while (!in.atEnd () && !pre_read && end_position < 0);
+        if (!pre_read)            // found header
+          {
+            if (end_position < 0)
+              {
+                throw LoaderException (std::runtime_error {QCoreApplication::translate ("WorkedBefore", "Invalid ADIF header").toLocal8Bit ()});
+              }
+            buffer.remove (0, end_position + 5);
+          }
+        while (!in.atEnd ())
+          {
+            end_position = buffer.indexOf ("<EOR>", 0, Qt::CaseInsensitive);
             do
               {
-                buffer += in.readLine () + '\n';
-                if (buffer.startsWith (QChar {'<'})) // denotes no header
+                if (!in.atEnd () && end_position < 0)
                   {
-                    pre_read = true;
-                  }
-                else
-                  {
-                    end_position = buffer.indexOf ("<EOH>", 0, Qt::CaseInsensitive);
+                    buffer += in.readLine () + '\n';
                   }
               }
-            while (!in.atEnd () && !pre_read && end_position < 0);
-            if (!pre_read)            // found header
+            while ((end_position = buffer.indexOf ("<EOR>", 0, Qt::CaseInsensitive)) < 0 && !in.atEnd ());
+            if (end_position >= 0) // require valid ADIF record with terminator
               {
-                if (end_position < 0)
+                auto record = buffer.left (end_position + 5).trimmed ();
+                auto next_record = buffer.indexOf (QChar {'<'}, end_position + 5);
+                buffer.remove (0, next_record >=0 ? next_record : buffer.size ());
+                record = record.mid (record.indexOf (QChar {'<'}));
+                auto call = extractField (record, "CALL");
+                if (call.size ()) // require CALL field before parsing a record
                   {
-                    throw LoaderException (std::runtime_error {QCoreApplication::translate ("WorkedBefore", "Invalid ADIF header").toLocal8Bit ()});
-                  }
-                buffer.remove (0, end_position + 5);
-              }
-            while (!in.atEnd ())
-              {
-                end_position = buffer.indexOf ("<EOR>", 0, Qt::CaseInsensitive);
-                do
-                  {
-                    if (!in.atEnd () && end_position < 0)
+                    auto const& entity = prefixes->lookup (call);
+                    auto mode = extractField (record, "MODE").toUpper ();
+                    if (!mode.size () || "MFSK" == mode)
                       {
-                        buffer += in.readLine () + '\n';
+                        mode = extractField (record, "SUBMODE").toUpper ();
                       }
-                  }
-                while ((end_position = buffer.indexOf ("<EOR>", 0, Qt::CaseInsensitive)) < 0 && !in.atEnd ());
-                if (end_position >= 0) // require valid ADIF record
-                                       // with terminator
-                  {
-                    auto record = buffer.left (end_position + 5).trimmed ();
-                    auto next_record = buffer.indexOf (QChar {'<'}, end_position + 5);
-                    buffer.remove (0, next_record >=0 ? next_record : buffer.size ());
-                    record = record.mid (record.indexOf (QChar {'<'}));
-                    auto call = extractField (record, "CALL");
-                    if (call.size ()) // require CALL field before we
-                                      // will parse a record
+                    worked_entry entry {call.toUpper ()
+                                        , extractField (record, "GRIDSQUARE").left (4).toUpper ()
+                                        , extractField (record, "BAND").toUpper ()
+                                        , mode
+                                        , entity.entity_name
+                                        , entity.continent
+                                        , entity.CQ_zone
+                                        , entity.ITU_zone};
+                    if (into_all)
                       {
-                        auto const& entity = prefixes->lookup (call);
-                        auto mode = extractField (record, "MODE").toUpper ();
-                        if (!mode.size () || "MFSK" == mode)
-                          {
-                            mode = extractField (record, "SUBMODE").toUpper ();
-                          }
-                        worked_entry entry {call.toUpper ()
-                                            , extractField (record, "GRIDSQUARE").left (4).toUpper () // not interested in 6-digit grids
-                                            , extractField (record, "BAND").toUpper ()
-                                            , mode
-                                            , entity.entity_name
-                                            , entity.continent
-                                            , entity.CQ_zone
-                                            , entity.ITU_zone};
                         worked.all.emplace (entry);
-                        if (LotwConfirmation::received (record))
-                          {
-                            worked.lotw_confirmed.emplace (entry);
-                          }
+                      }
+                    if (into_confirmed && LotwConfirmation::received (record))
+                      {
+                        worked.lotw_confirmed.emplace (entry);
                       }
                   }
               }
           }
-        else
-          {
-            throw LoaderException (std::runtime_error {QCoreApplication::translate ("WorkedBefore", "Error opening ADIF log file for read: %0").arg (inputFile.errorString ()).toLocal8Bit ()});
-          }
+      };
+
+    bool const separate = !confirmation_path.isEmpty () && confirmation_path != path;
+    if (separate)
+      {
+        // Worked-before comes from this application's own log; confirmations
+        // come from the file the operator points at.
+        parse_file (path, true, false);
+        parse_file (confirmation_path, false, true);
+      }
+    else
+      {
+        parse_file (path, true, true);
       }
     return worked;
-  }
-}
+  }}
 
 class WorkedBefore::impl final
 {
@@ -388,12 +409,16 @@ public:
   void reload ()
   {
     prefixes_.reload (configuration_);
-    async_loader_ = QtConcurrent::run (loader, path_, &prefixes_);
+    async_loader_ = QtConcurrent::run (loader, path_, confirmation_path_, &prefixes_);
     loader_watcher_.setFuture (async_loader_);
   }
 
   Configuration const * configuration_;
   QString path_;
+  // Empty means confirmations come from path_ itself (the historical
+  // behaviour); otherwise this is a separate ADIF such as a qlog export.
+  QString confirmation_path_;
+  int confirmed_count_ {0};
   AD1CCty prefixes_;
   // Returns the index selected by the caller without exposing the duplicate
   // storage used to keep confirmation-aware lookups as fast as normal ones.
@@ -420,6 +445,7 @@ WorkedBefore::WorkedBefore (Configuration const * configuration)
           auto loaded = m_->loader_watcher_.result ();
           m_->all_worked_ = std::move (loaded.all);
           m_->lotw_confirmed_ = std::move (loaded.lotw_confirmed);
+          m_->confirmed_count_ = static_cast<int> (m_->lotw_confirmed_.size ());
           n = m_->all_worked_.size ();
         }
       catch (LoaderException const& e)
@@ -429,6 +455,7 @@ WorkedBefore::WorkedBefore (Configuration const * configuration)
       QString cty_ver = m_->prefixes_.version();
       LOG_DEBUG(QString{"WorkedBefore::reload: CTY.DAT version %1"}.arg (cty_ver));
       Q_EMIT finished_loading (n, cty_ver, error);
+      Q_EMIT confirmations_loaded (m_->confirmed_count_);
     });
   reload ();
 }
@@ -450,6 +477,27 @@ WorkedBefore::~WorkedBefore ()
 QString const& WorkedBefore::path () const
 {
   return m_->path_;
+}
+
+void WorkedBefore::set_confirmation_log (QString const& path)
+{
+  if (path == m_->confirmation_path_)
+    {
+      return;
+    }
+  // Deliberately does not reload: callers follow with reload ()/rescan so a
+  // path change costs one parse, not two.
+  m_->confirmation_path_ = path;
+}
+
+QString WorkedBefore::confirmation_log () const
+{
+  return m_->confirmation_path_;
+}
+
+int WorkedBefore::confirmed_count () const
+{
+  return m_->confirmed_count_;
 }
 
 AD1CCty const * WorkedBefore::countries () const
