@@ -79,6 +79,7 @@ class QProcessEnvironment;
 class QSharedMemory;
 class QSplashScreen;
 class QSettings;
+class QCheckBox;
 class QLineEdit;
 class QPoint;
 class QFont;
@@ -575,6 +576,11 @@ private:
   Cloudlog m_cloudlog;
   WSPRBandHopping m_WSPR_band_hopping;
   AutoBandHop * m_autoBandHop {nullptr};
+  // Band-hop limiter: which of AutoBandHop::bands() the operator allows.
+  QList<QCheckBox *> hopBandBoxes () const;
+  quint16 hopBandMask () const;
+  void applyHopBandMask ();
+
   bool m_WSPR_tx_next;
   MessageBox m_rigErrorMessageBox;
   QScopedPointer<SampleDownloader> m_sampleDownloader;

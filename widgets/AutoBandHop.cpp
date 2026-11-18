@@ -70,21 +70,29 @@ int AutoBandHop::scoreFor (BandEntry const & band, int utcHour, int monthIndex)
   return score;
 }
 
-double AutoBandHop::bestFrequencyMHz (QDateTime const & utc, QString * reason)
+double AutoBandHop::bestFrequencyMHz (QDateTime const & utc, QString * reason,
+                                      quint16 allowed)
 {
   int const hour = utc.time ().hour ();
   int const month = utc.date ().month () - 1;
 
   int best_score {-1};
-  int best_index {0};
+  int best_index {-1};
   for (int i = 0; i < kBandCount; ++i)
     {
+      if (0 == (allowed & (quint16 {1} << i))) continue;
       int const score = scoreFor (kBands[i], hour, month);
       if (score > best_score)
         {
           best_score = score;
           best_index = i;
         }
+    }
+
+  if (best_index < 0)
+    {
+      if (reason) *reason = QStringLiteral ("Auto band hop: no bands enabled");
+      return 0.0;
     }
 
   if (reason)
@@ -117,9 +125,15 @@ void AutoBandHop::setIntervalMinutes (int minutes)
   m_timer.setInterval (m_intervalMin * 60 * 1000);
 }
 
+void AutoBandHop::setAllowedBands (quint16 allowed)
+{
+  m_allowed = allowed;
+}
+
 void AutoBandHop::evaluate ()
 {
+  if (0 == m_allowed) return;          // nothing enabled: stay put
   QString reason;
-  double const freq = bestFrequencyMHz (QDateTime::currentDateTimeUtc (), &reason);
-  Q_EMIT hopRequested (freq, reason);
+  double const freq = bestFrequencyMHz (QDateTime::currentDateTimeUtc (), &reason, m_allowed);
+  if (freq > 0.0) Q_EMIT hopRequested (freq, reason);
 }

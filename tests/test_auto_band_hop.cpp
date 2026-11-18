@@ -17,6 +17,9 @@ private Q_SLOTS:
   void summer_night_picks_40m ();
   void reason_names_the_band ();
   void result_is_always_in_the_table ();
+  // The band mask must restrict the choice to the enabled bands only.
+  void mask_limits_the_choice ();
+  void empty_mask_reports_nothing ();
 };
 
 namespace
@@ -94,6 +97,29 @@ void TestAutoBandHop::result_is_always_in_the_table ()
           QVERIFY2 (found, qPrintable (QString {"%1/%2 -> %3"}.arg (month).arg (hour).arg (freq)));
         }
     }
+}
+
+// Only 40m enabled: the model's normal preference for 20m at midday is
+// overruled, and at night it still picks 40m.
+void TestAutoBandHop::mask_limits_the_choice ()
+{
+  quint16 const only_40m = quint16 {1} << 2;
+  QCOMPARE (AutoBandHop::bestFrequencyMHz (utc (2026, 6, 15, 0), nullptr, only_40m), 7.074);
+  QCOMPARE (AutoBandHop::bestFrequencyMHz (utc (2026, 3, 15, 12), nullptr, only_40m), 7.074);
+
+  quint16 const only_20m = quint16 {1} << 4;
+  QCOMPARE (AutoBandHop::bestFrequencyMHz (utc (2026, 3, 15, 12), nullptr, only_20m), 14.074);
+  QCOMPARE (AutoBandHop::bestFrequencyMHz (utc (2026, 6, 15, 0), nullptr, only_20m), 14.074);
+
+  // Default mask (everything) still behaves as before.
+  QCOMPARE (AutoBandHop::bestFrequencyMHz (utc (2026, 3, 15, 12)), 14.074);
+}
+
+void TestAutoBandHop::empty_mask_reports_nothing ()
+{
+  QString reason;
+  QCOMPARE (AutoBandHop::bestFrequencyMHz (utc (2026, 3, 15, 12), &reason, 0), 0.0);
+  QVERIFY (!reason.isEmpty ());
 }
 
 QTEST_GUILESS_MAIN (TestAutoBandHop)

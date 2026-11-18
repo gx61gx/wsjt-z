@@ -1159,6 +1159,13 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
   // never runs alongside - the schedule-based "Band hopping" group above.
   m_autoBandHop = new AutoBandHop {this};
   m_autoBandHop->setIntervalMinutes (ui->sb_autoHopInterval->value ());
+  // Band-hop limiter: the operator restricts which bands may be chosen.
+  for (auto * box : hopBandBoxes ())
+    {
+      connect (box, &QCheckBox::toggled, this, [this] { applyHopBandMask (); });
+    }
+  applyHopBandMask ();
+
   connect (ui->gb_autoHop, &QGroupBox::toggled, this, [this] (bool on) {
       if (on && ui->cb_bandHopper->isChecked ()) ui->cb_bandHopper->setChecked (false);
       m_autoBandHop->setEnabled (on);
@@ -1792,6 +1799,16 @@ void MainWindow::writeSettings()
   m_settings->setValue ("bandHopper", ui->pte_bandHopper->toPlainText());
   m_settings->setValue ("autoBandHopEnabled", ui->gb_autoHop->isChecked());
   m_settings->setValue ("autoBandHopInterval", ui->sb_autoHopInterval->value());
+  QStringList hop_bands;
+  {
+    auto const boxes = hopBandBoxes ();
+    int const count = qMin (boxes.size (), AutoBandHop::bandCount ());
+    for (int i = 0; i < count; ++i)
+      {
+        if (boxes[i]->isChecked ()) hop_bands << QString::fromLatin1 (AutoBandHop::bands ()[i].name);
+      }
+  }
+  m_settings->setValue ("autoBandHopBands", hop_bands);
   m_settings->setValue ("AutoCallPreferPSKSpotted", ui->cb_autoCallPreferPSKSpotted->isChecked());
 
   m_settings->setValue ("AutoCallPriority", ui->cb_autoCallPriority->currentIndex());
@@ -2042,6 +2059,18 @@ void MainWindow::readSettings()
   ui->gb_autoHop->setChecked(m_settings->value("autoBandHopEnabled", false).toBool()
                              && !ui->cb_bandHopper->isChecked());
   ui->sb_autoHopInterval->setValue(m_settings->value("autoBandHopInterval", 5).toInt());
+  // An absent setting means "all bands", so a first run or an older
+  // settings file keeps every band eligible.
+  {
+    QStringList const hop_bands = m_settings->value ("autoBandHopBands").toStringList ();
+    auto const boxes = hopBandBoxes ();
+    int const count = qMin (boxes.size (), AutoBandHop::bandCount ());
+    for (int i = 0; i < count; ++i)
+      {
+        boxes[i]->setChecked (hop_bands.isEmpty ()
+                              || hop_bands.contains (QString::fromLatin1 (AutoBandHop::bands ()[i].name)));
+      }
+  }
   ui->cb_autoCallPreferPSKSpotted->setChecked(m_settings->value("AutoCallPreferPSKSpotted", false).toBool());
   ui->cb_autoCallPriority->setCurrentIndex(m_settings->value ("AutoCallPriority", 0).toInt ());
   m_infoMessageShown = m_settings->value("infoMessageShown12-2024", false).toBool();
@@ -15600,6 +15629,29 @@ void MainWindow::onAutoBandHop (double freqMHz, QString reason)
     switchBand(row);
     statusBar()->showMessage(reason, 8000);
     if (m_zdebug) log("AutoBandHop: " + reason);
+}
+
+QList<QCheckBox *> MainWindow::hopBandBoxes () const
+{
+  return {ui->cb_hopB160, ui->cb_hopB80, ui->cb_hopB40, ui->cb_hopB30, ui->cb_hopB20,
+          ui->cb_hopB17, ui->cb_hopB15, ui->cb_hopB12, ui->cb_hopB10};
+}
+
+quint16 MainWindow::hopBandMask () const
+{
+  quint16 mask {0};
+  auto const boxes = hopBandBoxes ();
+  int const count = qMin (boxes.size (), AutoBandHop::bandCount ());
+  for (int i = 0; i < count; ++i)
+    {
+      if (boxes[i]->isChecked ()) mask |= quint16 {1} << i;
+    }
+  return mask;
+}
+
+void MainWindow::applyHopBandMask ()
+{
+  if (m_autoBandHop) m_autoBandHop->setAllowedBands (hopBandMask ());
 }
 
 void MainWindow::toggleBands() {

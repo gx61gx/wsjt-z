@@ -51,9 +51,18 @@ public:
   void setIntervalMinutes (int);
   int intervalMinutes () const {return m_intervalMin;}
 
+  // Which bands may be chosen: bit i selects bands()[i].  Zero means nothing
+  // is allowed, in which case no hop is requested.  Default: every band.
+  void setAllowedBands (quint16);
+  quint16 allowedBands () const {return m_allowed;}
+
   // Best FT8 dial frequency for a given UTC instant; *reason is set to a
   // human-readable explanation suitable for the status bar.
-  static double bestFrequencyMHz (QDateTime const & utc, QString * reason = nullptr);
+  // Best FT8 dial frequency for a given UTC instant; *reason is set to a
+  // human-readable explanation suitable for the status bar.  Returns 0 when
+  // no band is allowed by the mask.
+  static double bestFrequencyMHz (QDateTime const & utc, QString * reason = nullptr,
+                                  quint16 allowed = 0xFFFF);
 
   static BandEntry const * bands ();
   static int bandCount ();
@@ -71,6 +80,7 @@ private:
   QTimer m_timer;
   bool m_enabled {false};
   int m_intervalMin {5};
+  quint16 m_allowed {0xFFFF};
 };
 
 #endif
